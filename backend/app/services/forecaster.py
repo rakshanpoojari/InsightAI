@@ -7,7 +7,8 @@ import pandas as pd
 from sqlalchemy.engine import Engine
 
 from app.models.dataset import Dataset, DatasetColumn
-from app.schemas import ForecastPoint, ForecastRequest, ForecastResponse
+from app.schemas import ForecastPoint, ForecastRequest, ForecastResponse, ForecastExplanation
+from app.services import gemini_service
 from app.services.storage import read_dataframe
 
 
@@ -168,6 +169,26 @@ def run_forecast(
         f"and model goodness-of-fit R² = {r_squared:.2f}."
     )
 
+    forecast_info = {
+        "dataset_name": dataset.name,
+        "target_column": target_col,
+        "date_column": str(date_col),
+        "horizon": horizon,
+        "trend_direction": trend_dir,
+        "slope": round(float(slope), 3),
+        "r_squared": round(float(r_squared), 3),
+        "expected_growth_pct": round(float(growth_rate), 2),
+        "avg_historical": round(avg_historical, 2),
+        "projected_horizon_avg": round(predicted_future_avg, 2),
+        "historical_points_count": len(y),
+    }
+
+    try:
+        ai_expl_data = gemini_service.explain_forecast(forecast_info, is_cpi=False)
+        ai_explanation = ForecastExplanation(**ai_expl_data)
+    except Exception as e:
+        ai_explanation = None
+
     return ForecastResponse(
         dataset_id=dataset.id,
         date_column=str(date_col),
@@ -176,4 +197,5 @@ def run_forecast(
         forecast_points=forecast_points,
         metrics=metrics,
         summary=summary,
+        ai_explanation=ai_explanation,
     )

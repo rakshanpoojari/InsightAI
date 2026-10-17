@@ -49,3 +49,26 @@ def get_forecast(dataset_id: int, request: ForecastRequest, db: Session = Depend
     except Exception as e:
         logger.exception("Failed to run forecast")
         raise HTTPException(status_code=500, detail=f"Failed to run forecast: {e}")
+
+
+@router.post("/forecast/explain")
+def explain_forecast_endpoint(dataset_id: int, request: ForecastRequest, db: Session = Depends(get_db)):
+    dataset = db.query(Dataset).filter(Dataset.id == dataset_id).first()
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found.")
+
+    columns = db.query(DatasetColumn).filter(DatasetColumn.dataset_id == dataset_id).all()
+    if not columns:
+        raise HTTPException(status_code=400, detail="Dataset has no columns profiled.")
+
+    try:
+        forecast_res = forecaster.run_forecast(engine, dataset, columns, request)
+        if forecast_res.ai_explanation:
+            return forecast_res.ai_explanation
+        raise HTTPException(status_code=500, detail="Explanation could not be generated.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to explain forecast")
+        raise HTTPException(status_code=500, detail=f"Failed to explain forecast: {e}")
+

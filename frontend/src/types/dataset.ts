@@ -38,6 +38,72 @@ export interface CleaningOptions {
   trim_whitespace: boolean;
 }
 
+// ================= AI Data Cleaning Assistant Types =================
+export interface QualityIssue {
+  id: string;
+  category:
+    | "missing_values"
+    | "duplicates"
+    | "text_inconsistency"
+    | "invalid_dates"
+    | "numeric_formatting"
+    | "outliers"
+    | "invalid_values"
+    | "type_inconsistency"
+    | "calculation_anomaly";
+  severity: "high" | "medium" | "low";
+  column?: string | null;
+  affected_rows_count: number;
+  affected_percentage: number;
+  sample_values: string[];
+  title: string;
+  description: string;
+  why_it_matters: string;
+  recommended_action: string;
+  action_type: string;
+  expected_impact: string;
+  risks_assumptions: string;
+  is_selected_by_default: boolean;
+}
+
+export interface QualityReportResponse {
+  dataset_id: number;
+  dataset_name: string;
+  total_rows: number;
+  total_columns: number;
+  quality_score: number;
+  issues_count_by_category: Record<string, number>;
+  issues_count_by_severity: Record<string, number>;
+  total_issues: number;
+  issues: QualityIssue[];
+  ai_summary?: string | null;
+  ai_provider?: string | null;
+  has_backup: boolean;
+}
+
+export interface CleanPreviewResponse {
+  dataset_id: number;
+  rows_before: number;
+  rows_after: number;
+  current_quality_score: number;
+  projected_quality_score: number;
+  actions_to_apply: string[];
+  sample_before_rows: Record<string, unknown>[];
+  sample_after_rows: Record<string, unknown>[];
+}
+
+export interface CleanApplyResponse {
+  dataset_id: number;
+  status: string;
+  rows_before: number;
+  rows_after: number;
+  old_quality_score: number;
+  new_quality_score: number;
+  actions_applied: string[];
+  applied_report: Record<string, unknown>;
+  summary: string;
+}
+
 // ================= Phase 2: Analytics Types =================
 export interface ChartConfig {
   chart_type: "bar" | "line" | "area" | "pie" | "donut" | "metric";
@@ -56,6 +122,11 @@ export interface QueryResult {
   execution_time_ms: number;
   chart_config?: ChartConfig;
   summary?: string;
+  ai_explanation?: string;
+  ai_supporting_figures?: string[];
+  ai_relevant_columns?: string[];
+  ai_insights?: string[];
+  ai_provider?: string | null;
 }
 
 // ================= Phase 3: Dashboard Types =================
@@ -96,6 +167,7 @@ export interface InsightCard {
   metric?: string;
   description: string;
   recommendation?: string;
+  affected_columns?: string[];
 }
 
 export interface InsightsResponse {
@@ -104,6 +176,8 @@ export interface InsightsResponse {
   insights: InsightCard[];
   correlation_matrix?: Record<string, Record<string, number>>;
   executive_summary: string;
+  ai_provider?: string | null;
+  ai_enhanced?: boolean;
 }
 
 // ================= Phase 5: Advanced Types =================
@@ -134,6 +208,19 @@ export interface ForecastPoint {
   upper_bound?: number | null;
 }
 
+export interface ForecastExplanation {
+  summary: string;
+  historical_patterns: string;
+  assumptions_uncertainty: string;
+  business_implications: string;
+  recommendations: string[];
+  model_used: string;
+  trend_direction: string;
+  projected_change_pct: number;
+  confidence_level: string;
+  ai_provider?: string | null;
+}
+
 export interface ForecastResponse {
   dataset_id: number;
   date_column: string;
@@ -148,6 +235,7 @@ export interface ForecastResponse {
     projected_horizon_avg: number;
   };
   summary: string;
+  ai_explanation?: ForecastExplanation | null;
 }
 
 export interface SystemStatusResponse {
@@ -253,6 +341,7 @@ export interface CpiForecastResponse {
   confidence_interval_note?: string;
   disclaimer: string;
   points: CpiPoint[];
+  ai_explanation?: ForecastExplanation | null;
 }
 
 export interface CpiForecastRequest {
@@ -265,6 +354,80 @@ export interface CpiForecastRequest {
   start_date?: string;
   end_date?: string;
 }
+
+// ================= Phase 3: Executive Report Generator Types =================
+export interface ReportSectionOptions {
+  executive_summary: boolean;
+  data_health_audit: boolean;
+  key_metrics_distribution: boolean;
+  ai_insights: boolean;
+  forecast_outlook: boolean;
+  strategic_action_plan: boolean;
+}
+
+export interface ReportGenerateRequest {
+  title?: string;
+  subtitle?: string;
+  target_column?: string;
+  date_column?: string;
+  forecast_horizon?: number;
+  sections?: ReportSectionOptions;
+}
+
+export interface ReportPreviewResponse {
+  title: string;
+  subtitle: string;
+  dataset_id: number;
+  dataset_name: string;
+  total_rows: number;
+  total_columns: number;
+  quality_score: number;
+  primary_metric?: string | null;
+  narrative: {
+    executive_summary: string;
+    action_plan: Array<{
+      timeframe: string;
+      action: string;
+      impact: string;
+    }>;
+    ai_provider?: string | null;
+  };
+  distribution: {
+    metric_name?: string;
+    total?: number;
+    mean?: number;
+    median?: number;
+    std?: number;
+    min?: number;
+    max?: number;
+    q25?: number;
+    q75?: number;
+  };
+  top_categories: Array<{ category: string; value: number }>;
+  quality_issues: QualityIssue[];
+  insights: Array<{
+    title: string;
+    category: string;
+    impact: string;
+    description: string;
+    recommendation?: string;
+  }>;
+  forecast?: {
+    target_column: string;
+    date_column: string;
+    horizon: number;
+    trend_direction: string;
+    expected_growth_pct: number;
+    r_squared: number;
+    avg_historical: number;
+    projected_horizon_avg: number;
+    summary: string;
+    forecast_points: ForecastPoint[];
+    ai_explanation?: ForecastExplanation | null;
+  } | null;
+  sections: Record<string, boolean>;
+}
+
 
 
 

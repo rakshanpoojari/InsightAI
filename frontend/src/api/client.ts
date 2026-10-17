@@ -7,12 +7,18 @@ import type {
   DatasetPreview,
   DatasetSummary,
   ForecastResponse,
+  ForecastExplanation,
   InsightsResponse,
   QueryResult,
   SystemStatusResponse,
   CpiOptionsResponse,
   CpiForecastResponse,
   CpiForecastRequest,
+  QualityReportResponse,
+  CleanPreviewResponse,
+  CleanApplyResponse,
+  ReportGenerateRequest,
+  ReportPreviewResponse,
 } from "../types/dataset";
 
 const api = axios.create({ baseURL: "/api" });
@@ -49,6 +55,35 @@ export async function previewDataset(id: number, limit = 50): Promise<DatasetPre
 export async function cleanDataset(id: number, options: CleaningOptions): Promise<DatasetDetail> {
   const { data } = await api.post<DatasetDetail>(`/datasets/${id}/clean`, options);
   return data;
+}
+
+export async function getQualityAudit(id: number): Promise<QualityReportResponse> {
+  const { data } = await api.get<QualityReportResponse>(`/datasets/${id}/quality-audit`);
+  return data;
+}
+
+export async function previewClean(id: number, selectedIssueIds: string[]): Promise<CleanPreviewResponse> {
+  const { data } = await api.post<CleanPreviewResponse>(`/datasets/${id}/clean/preview`, {
+    selected_issue_ids: selectedIssueIds,
+  });
+  return data;
+}
+
+export async function applyClean(id: number, selectedIssueIds: string[]): Promise<CleanApplyResponse> {
+  const { data } = await api.post<CleanApplyResponse>(`/datasets/${id}/clean/apply`, {
+    selected_issue_ids: selectedIssueIds,
+    confirm: true,
+  });
+  return data;
+}
+
+export async function resetClean(id: number): Promise<DatasetDetail> {
+  const { data } = await api.post<DatasetDetail>(`/datasets/${id}/clean/reset`);
+  return data;
+}
+
+export function getExportUrl(id: number, format: "csv" | "xlsx"): string {
+  return `/api/datasets/${id}/export?format=${format}`;
 }
 
 export async function deleteDataset(id: number): Promise<void> {
@@ -110,6 +145,20 @@ export async function getForecast(
   return data;
 }
 
+export async function explainForecast(
+  datasetId: number,
+  targetColumn?: string,
+  dateColumn?: string,
+  horizon = 14
+): Promise<ForecastExplanation> {
+  const { data } = await api.post<ForecastExplanation>(`/datasets/${datasetId}/forecast/explain`, {
+    target_column: targetColumn,
+    date_column: dateColumn,
+    horizon,
+  });
+  return data;
+}
+
 // Phase 6: CPI & Price Movement Forecasting
 export async function getCpiOptions(datasetId: number): Promise<CpiOptionsResponse> {
   const { data } = await api.get<CpiOptionsResponse>(`/datasets/${datasetId}/cpi/options`);
@@ -124,9 +173,36 @@ export async function getCpiForecast(
   return data;
 }
 
+export async function explainCpiForecast(
+  datasetId: number,
+  params: CpiForecastRequest
+): Promise<ForecastExplanation> {
+  const { data } = await api.post<ForecastExplanation>(`/datasets/${datasetId}/cpi/forecast/explain`, params);
+  return data;
+}
+
 export async function loadCpiSample(): Promise<DatasetDetail> {
   const { data } = await api.post<DatasetDetail>("/datasets/load-cpi-sample");
   return data;
+}
+
+// Phase 7: AI Executive Report Generator
+export async function previewExecutiveReport(
+  datasetId: number,
+  request: ReportGenerateRequest
+): Promise<ReportPreviewResponse> {
+  const { data } = await api.post<ReportPreviewResponse>(`/datasets/${datasetId}/report/preview`, request);
+  return data;
+}
+
+export async function downloadExecutiveReportPdf(
+  datasetId: number,
+  request: ReportGenerateRequest
+): Promise<Blob> {
+  const response = await api.post(`/datasets/${datasetId}/report/pdf`, request, {
+    responseType: "blob",
+  });
+  return response.data;
 }
 
 export async function getHealth(): Promise<Record<string, unknown>> {

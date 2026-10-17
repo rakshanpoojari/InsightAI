@@ -103,6 +103,43 @@ def get_cpi_forecast(
         raise HTTPException(status_code=500, detail=f"Failed to run CPI forecasting: {e}")
 
 
+@router.post("/{dataset_id}/cpi/forecast/explain")
+def explain_cpi_forecast_endpoint(
+    dataset_id: int,
+    request: CpiForecastRequest,
+    db: Session = Depends(get_db),
+):
+    dataset = db.query(Dataset).filter(Dataset.id == dataset_id).first()
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found.")
+
+    columns = db.query(DatasetColumn).filter(DatasetColumn.dataset_id == dataset_id).all()
+    try:
+        forecast_res = cpi_engine.run_cpi_forecast(
+            engine=engine,
+            dataset=dataset,
+            columns=columns,
+            analysis_mode=request.analysis_mode,
+            date_column=request.date_column,
+            price_column=request.price_column,
+            dimension_column=request.dimension_column,
+            dimension_value=request.dimension_value,
+            horizon_months=request.horizon_months,
+            start_date=request.start_date,
+            end_date=request.end_date,
+        )
+        if forecast_res.get("ai_explanation"):
+            return forecast_res["ai_explanation"]
+        raise HTTPException(status_code=500, detail="CPI explanation could not be generated.")
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception("Failed to explain CPI forecast")
+        raise HTTPException(status_code=500, detail=f"Failed to explain CPI forecast: {e}")
+
+
 @router.post("/load-cpi-sample", status_code=status.HTTP_201_CREATED)
 def load_cpi_sample_dataset(db: Session = Depends(get_db)):
     sample_path = os.path.join(

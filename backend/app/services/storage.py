@@ -70,5 +70,51 @@ def read_preview(engine: Engine, table_name: str, limit: int = 50) -> tuple[list
 
 
 def drop_table(engine: Engine, table_name: str) -> None:
+    raw_table = get_raw_table_name(table_name)
     with engine.begin() as conn:
         conn.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
+        conn.execute(text(f'DROP TABLE IF EXISTS "{raw_table}"'))
+
+
+def get_raw_table_name(table_name: str) -> str:
+    return f"raw_{table_name}"
+
+
+def ensure_raw_backup(engine: Engine, table_name: str) -> None:
+    raw_table = get_raw_table_name(table_name)
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name=:t"),
+            {"t": raw_table},
+        ).scalar()
+        if not exists:
+            src_exists = conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table' AND name=:t"),
+                {"t": table_name},
+            ).scalar()
+            if src_exists:
+                conn.execute(text(f'CREATE TABLE "{raw_table}" AS SELECT * FROM "{table_name}"'))
+
+
+def restore_raw_backup(engine: Engine, table_name: str) -> bool:
+    raw_table = get_raw_table_name(table_name)
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name=:t"),
+            {"t": raw_table},
+        ).scalar()
+        if not exists:
+            return False
+        conn.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
+        conn.execute(text(f'CREATE TABLE "{table_name}" AS SELECT * FROM "{raw_table}"'))
+        return True
+
+
+def has_raw_backup(engine: Engine, table_name: str) -> bool:
+    raw_table = get_raw_table_name(table_name)
+    with engine.connect() as conn:
+        exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name=:t"),
+            {"t": raw_table},
+        ).scalar()
+        return bool(exists)

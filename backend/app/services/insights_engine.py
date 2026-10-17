@@ -7,6 +7,7 @@ from sqlalchemy.engine import Engine
 
 from app.models.dataset import Dataset, DatasetColumn
 from app.schemas import InsightCard, InsightsResponse
+from app.services import gemini_service
 from app.services.storage import read_dataframe
 
 
@@ -44,6 +45,7 @@ def generate_insights(engine: Engine, dataset: Dataset, columns: List[DatasetCol
                         metric=f"{top_share:.1f}%",
                         description=f"'{top_item}' alone accounts for {top_share:.1f}% of all {num}. The business is heavily reliant on this single {cat.lower()}.",
                         recommendation=f"Diversify across other {cat.lower()}s to mitigate dependency risks and unlock untapped growth.",
+                        affected_columns=[cat, num],
                     )
                 )
             else:
@@ -56,6 +58,7 @@ def generate_insights(engine: Engine, dataset: Dataset, columns: List[DatasetCol
                         metric=f"{top_20_share:.1f}%",
                         description=f"Following the Pareto principle, the top {top_20_pct_count} of {len(grp)} {cat.lower()}s generate {top_20_share:.1f}% of total {num}.",
                         recommendation=f"Focus strategic optimizations and retention programs on these top {cat.lower()} performers.",
+                        affected_columns=[cat, num],
                     )
                 )
 
@@ -93,6 +96,7 @@ def generate_insights(engine: Engine, dataset: Dataset, columns: List[DatasetCol
                         metric=f"r = {max_corr:+.2f}",
                         description=f"A statistically significant relationship (r = {max_corr:+.2f}) exists: {best_pair[0]} is {direction} correlated with {best_pair[1]}.",
                         recommendation=f"Leverage changes in {best_pair[0]} as a leading indicator to predict and plan {best_pair[1]}.",
+                        affected_columns=[best_pair[0], best_pair[1]],
                     )
                 )
 
@@ -114,6 +118,7 @@ def generate_insights(engine: Engine, dataset: Dataset, columns: List[DatasetCol
                         metric=f"CV: {cv:.1f}%",
                         description=f"{primary_num} displays high variance (standard deviation: {std:,.2f} vs average: {mean:,.2f}), signaling wide distribution spread and potential outliers.",
                         recommendation="Review the anomaly detection report to isolate outlier transactions skewing the baseline.",
+                        affected_columns=[primary_num],
                     )
                 )
 
@@ -128,6 +133,7 @@ def generate_insights(engine: Engine, dataset: Dataset, columns: List[DatasetCol
                 metric=f"{dataset.quality_score:.1f}/100",
                 description="The dataset passed completeness and type-consistency checks with an excellent quality score, providing high confidence for predictive analytics.",
                 recommendation="Proceed with executive reporting and automated forecasting models with confidence.",
+                affected_columns=[],
             )
         )
     else:
@@ -140,6 +146,7 @@ def generate_insights(engine: Engine, dataset: Dataset, columns: List[DatasetCol
                 metric=f"{dataset.quality_score:.1f}/100",
                 description=f"Quality score is {dataset.quality_score:.1f}/100 due to missing values, duplicates, or ambiguous types.",
                 recommendation="Run the automated cleaning pipeline to drop duplicate rows and impute missing values.",
+                affected_columns=[],
             )
         )
 
@@ -162,6 +169,7 @@ def generate_insights(engine: Engine, dataset: Dataset, columns: List[DatasetCol
                     metric=f"{pct_change:+.1f}%",
                     description=f"Comparing the first half to the second half of tracked dates reveals an average {direction.lower()} of {pct_change:+.1f}% in {n_col}.",
                     recommendation=f"Analyze seasonal drivers or recent campaign activities to capitalize on this {direction.lower()}.",
+                    affected_columns=[d_col, n_col],
                 )
             )
 
@@ -172,10 +180,40 @@ def generate_insights(engine: Engine, dataset: Dataset, columns: List[DatasetCol
         + "All findings are deterministically computed from dataset mathematics."
     )
 
+    ai_provider = None
+    ai_enhanced = False
+
+    # Enhance with Gemini AI if configured
+    if gemini_service.is_gemini_configured() and insights:
+        ai_data = gemini_service.enhance_insights_with_gemini(
+            dataset_name=dataset.name,
+            computed_insights=[c.model_dump() for c in insights],
+            correlation_matrix=correlation_matrix,
+        )
+        if ai_data:
+            ai_provider = ai_data.get("ai_provider")
+            ai_enhanced = True
+            if ai_data.get("executive_summary"):
+                exec_summary = ai_data["executive_summary"]
+            
+            # Match and update card explanations/recommendations without altering verified metrics
+            enhanced_cards = {item.get("id"): item for item in ai_data.get("enhanced_insights", []) if isinstance(item, dict)}
+            for card in insights:
+                if card.id in enhanced_cards:
+                    enh = enhanced_cards[card.id]
+                    if enh.get("explanation"):
+                        card.description = str(enh["explanation"]).strip()
+                    if enh.get("recommendation"):
+                        card.recommendation = str(enh["recommendation"]).strip()
+                    if enh.get("executive_title"):
+                        card.title = str(enh["executive_title"]).strip()
+
     return InsightsResponse(
         dataset_id=dataset.id,
         dataset_name=dataset.name,
         insights=insights,
         correlation_matrix=correlation_matrix if correlation_matrix else None,
         executive_summary=exec_summary,
+        ai_provider=ai_provider,
+        ai_enhanced=ai_enhanced,
     )

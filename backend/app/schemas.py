@@ -1,6 +1,6 @@
 import datetime as dt
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ColumnProfile(BaseModel):
@@ -47,6 +47,72 @@ class CleaningOptions(BaseModel):
     trim_whitespace: bool = True
 
 
+# ================= AI Data Cleaning Assistant Schemas =================
+class QualityIssue(BaseModel):
+    id: str
+    category: str  # missing_values | duplicates | text_inconsistency | invalid_dates | numeric_formatting | outliers | invalid_values | type_inconsistency | calculation_anomaly
+    severity: str  # high | medium | low
+    column: Optional[str] = None
+    affected_rows_count: int
+    affected_percentage: float
+    sample_values: List[str] = []
+    title: str
+    description: str
+    why_it_matters: str
+    recommended_action: str
+    action_type: str
+    expected_impact: str
+    risks_assumptions: str
+    is_selected_by_default: bool = True
+
+
+class QualityReportResponse(BaseModel):
+    dataset_id: int
+    dataset_name: str
+    total_rows: int
+    total_columns: int
+    quality_score: float
+    issues_count_by_category: Dict[str, int]
+    issues_count_by_severity: Dict[str, int]
+    total_issues: int
+    issues: List[QualityIssue]
+    ai_summary: Optional[str] = None
+    ai_provider: Optional[str] = None
+    has_backup: bool = True
+
+
+class CleanPreviewRequest(BaseModel):
+    selected_issue_ids: List[str]
+
+
+class CleanPreviewResponse(BaseModel):
+    dataset_id: int
+    rows_before: int
+    rows_after: int
+    current_quality_score: float
+    projected_quality_score: float
+    actions_to_apply: List[str]
+    sample_before_rows: List[Dict[str, Any]]
+    sample_after_rows: List[Dict[str, Any]]
+
+
+class CleanApplyRequest(BaseModel):
+    selected_issue_ids: List[str]
+    confirm: bool = True
+
+
+class CleanApplyResponse(BaseModel):
+    dataset_id: int
+    status: str
+    rows_before: int
+    rows_after: int
+    old_quality_score: float
+    new_quality_score: float
+    actions_applied: List[str]
+    applied_report: Dict[str, Any]
+    summary: str
+
+
 # ================= Phase 2: Analytics & SQL schemas =================
 class RawQueryRequest(BaseModel):
     sql: str
@@ -73,6 +139,11 @@ class QueryResult(BaseModel):
     execution_time_ms: float
     chart_config: Optional[ChartConfig] = None
     summary: Optional[str] = None
+    ai_explanation: Optional[str] = None
+    ai_supporting_figures: Optional[List[str]] = None
+    ai_relevant_columns: Optional[List[str]] = None
+    ai_insights: Optional[List[str]] = None
+    ai_provider: Optional[str] = None
 
 
 # ================= Phase 3: Dashboard schemas =================
@@ -113,6 +184,7 @@ class InsightCard(BaseModel):
     metric: Optional[str] = None
     description: str
     recommendation: Optional[str] = None
+    affected_columns: Optional[List[str]] = None
     chart_preview: Optional[DashboardChart] = None
 
 
@@ -122,6 +194,8 @@ class InsightsResponse(BaseModel):
     insights: List[InsightCard]
     correlation_matrix: Optional[Dict[str, Dict[str, float]]] = None
     executive_summary: str
+    ai_provider: Optional[str] = None
+    ai_enhanced: bool = False
 
 
 # ================= Phase 5: Anomaly & Forecasting schemas =================
@@ -163,6 +237,19 @@ class ForecastPoint(BaseModel):
     upper_bound: Optional[float] = None
 
 
+class ForecastExplanation(BaseModel):
+    summary: str
+    historical_patterns: str
+    assumptions_uncertainty: str
+    business_implications: str
+    recommendations: List[str]
+    model_used: str
+    trend_direction: str
+    projected_change_pct: float
+    confidence_level: str
+    ai_provider: Optional[str] = None
+
+
 class ForecastResponse(BaseModel):
     dataset_id: int
     date_column: str
@@ -171,3 +258,42 @@ class ForecastResponse(BaseModel):
     forecast_points: List[ForecastPoint]
     metrics: Dict[str, Any]  # e.g., trend_direction, avg_growth, r_squared
     summary: str
+    ai_explanation: Optional[ForecastExplanation] = None
+
+
+# ================= Phase 3: Executive Report Generator schemas =================
+class ReportSectionOptions(BaseModel):
+    executive_summary: bool = True
+    data_health_audit: bool = True
+    key_metrics_distribution: bool = True
+    ai_insights: bool = True
+    forecast_outlook: bool = True
+    strategic_action_plan: bool = True
+
+
+class ReportGenerateRequest(BaseModel):
+    title: Optional[str] = "Executive Business Intelligence Report"
+    subtitle: Optional[str] = None
+    target_column: Optional[str] = None
+    date_column: Optional[str] = None
+    forecast_horizon: int = 14
+    sections: ReportSectionOptions = Field(default_factory=ReportSectionOptions)
+
+
+class ReportPreviewResponse(BaseModel):
+    title: str
+    subtitle: str
+    dataset_id: int
+    dataset_name: str
+    total_rows: int
+    total_columns: int
+    quality_score: float
+    primary_metric: Optional[str] = None
+    narrative: Dict[str, Any]
+    distribution: Dict[str, Any]
+    top_categories: List[Dict[str, Any]]
+    quality_issues: List[Dict[str, Any]]
+    insights: List[Dict[str, Any]]
+    forecast: Optional[Dict[str, Any]] = None
+    sections: Dict[str, bool]
+

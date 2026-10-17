@@ -9,6 +9,7 @@ import httpx
 
 from app.config import settings
 from app.models.dataset import Dataset, DatasetColumn
+from app.services import gemini_service, sql_engine
 
 logger = logging.getLogger("insightai.nl_query")
 
@@ -204,16 +205,26 @@ def generate_sql_from_heuristics(
 def generate_sql_from_llm(
     question: str, table_name: str, columns: List[DatasetColumn]
 ) -> Optional[Tuple[str, str]]:
-    """Generates SQL via LLM if API keys are available in environment."""
-    api_key = settings.gemini_api_key or settings.openai_api_key
-    if not api_key:
-        return None
+    """Generates SQL via Gemini or OpenAI if API keys are available in environment."""
+    # 1. Try Gemini first if configured
+    if gemini_service.is_gemini_configured():
+        try:
+            gemini_res = gemini_service.generate_sql_intent_with_gemini(question, table_name, columns)
+            if gemini_res:
+                sql, summary = gemini_res
+                # Strictly validate that generated SQL is read-only and safe
+                sql_engine.validate_sql(sql)
+                return sql, summary
+        except Exception as e:
+            logger.warning(f"Gemini SQL generation failed or query was rejected by safety validator: {e}")
 
-    schema_desc = "\n".join(
-        [f"- {c.name} ({c.inferred_type}): sample values {c.sample_values}" for c in columns]
-    )
+    # 2. Try OpenAI fallback if configured
+    if settings.openai_api_key:
+        schema_desc = "\n".join(
+            [f"- {c.name} ({c.inferred_type}): sample values {c.sample_values}" for c in columns[:25]]
+        )
 
-    prompt = f"""You are an expert SQL assistant for InsightAI.
+        prompt = f"""You are an expert SQL assistant for InsightAI.
 Database Table: "{table_name}"
 Columns:
 {schema_desc}
@@ -227,10 +238,7 @@ Instructions:
    - "summary": a one-sentence human explanation of what the query calculates
 
 JSON Response:"""
-
-    try:
-        # OpenAI or compatible endpoint
-        if settings.openai_api_key:
+        try:
             res = httpx.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers={"Authorization": f"Bearer {settings.openai_api_key}"},
@@ -244,9 +252,13 @@ JSON Response:"""
             if res.status_code == 200:
                 data = res.json()["choices"][0]["message"]["content"]
                 parsed = json.loads(data)
-                return parsed.get("sql"), parsed.get("summary")
-    except Exception as e:
-        logger.warning(f"LLM SQL generation failed, falling back to heuristics: {e}")
+                sql = parsed.get("sql")
+                summary = parsed.get("summary")
+                if sql:
+                    sql_engine.validate_sql(sql)
+                    return sql, summary
+        except Exception as e:
+            logger.warning(f"OpenAI SQL generation failed, falling back to heuristics: {e}")
 
     return None
 

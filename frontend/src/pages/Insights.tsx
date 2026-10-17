@@ -133,11 +133,23 @@ export default function Insights() {
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white shadow-xs shrink-0">
                 <Sparkles className="h-5 w-5" />
               </div>
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-brand-700">
-                  AI Strategic Synthesis
+              <div className="flex-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-xs font-bold uppercase tracking-wider text-brand-700">
+                    AI Strategic Synthesis
+                  </div>
+                  {data.ai_enhanced && data.ai_provider ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-brand-100/90 px-2.5 py-0.5 text-[10px] font-bold text-brand-800 border border-brand-200">
+                      <Sparkles className="h-3 w-3 text-brand-600" />
+                      Enhanced by {data.ai_provider}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-200">
+                      Deterministic Engine
+                    </span>
+                  )}
                 </div>
-                <div className="text-sm font-semibold text-slate-800 mt-1">
+                <div className="text-sm font-semibold text-slate-800 mt-1.5 leading-relaxed">
                   {data.executive_summary}
                 </div>
               </div>
@@ -186,6 +198,17 @@ export default function Insights() {
                     <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                       {card.description}
                     </p>
+
+                    {card.affected_columns && card.affected_columns.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400 mt-2.5">
+                        <span className="font-medium">Variables:</span>
+                        {card.affected_columns.map((col) => (
+                          <span key={col} className="font-mono bg-slate-50 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200">
+                            {col}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {card.recommendation && (
@@ -256,6 +279,14 @@ export default function Insights() {
               </div>
             </div>
           )}
+
+          {/* Evidence Guardrail Transparency Note */}
+          <div className="rounded-xl border border-slate-200/80 bg-slate-50 p-4 text-xs text-slate-500 flex items-start gap-2.5">
+            <Info className="h-4 w-4 text-brand-600 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-semibold text-slate-700">Evidence Guardrail & Transparency:</span> All underlying mathematical signals (Pareto concentration %, Pearson correlation r, volatility CV %, and period trends) are computed deterministically from active dataset records. When Gemini AI is enabled, generative models provide strategic synthesis and plain-language explanations strictly grounded in these verified facts.
+            </div>
+          </div>
         </div>
       ) : null}
     </div>

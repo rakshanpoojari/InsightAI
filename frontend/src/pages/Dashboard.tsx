@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useDataset } from "../context/DatasetContext";
 import { extractErrorMessage, getDashboard } from "../api/client";
 import type { DashboardResponse } from "../types/dataset";
@@ -12,6 +13,7 @@ import {
   ShieldCheck,
   BarChart,
   RefreshCw,
+  FileText,
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -84,14 +86,24 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <button
-          onClick={fetchDashboard}
-          disabled={isLoading}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition disabled:opacity-50"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
-          <span>Refresh Metrics</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/report"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3.5 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-brand-700 transition"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            <span>Generate Executive PDF</span>
+          </Link>
+
+          <button
+            onClick={fetchDashboard}
+            disabled={isLoading}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+            <span>Refresh Metrics</span>
+          </button>
+        </div>
       </div>
 
       {error && (

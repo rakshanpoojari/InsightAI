@@ -7,6 +7,7 @@ import {
   Sparkles,
   TrendingUp,
   LineChart,
+  FileText,
   Settings,
   BrainCircuit,
 } from "lucide-react";
@@ -25,6 +26,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/insights", label: "Evidence Insights", icon: Sparkles, tag: "AI" },
   { to: "/advanced", label: "Forecast & Anomalies", icon: TrendingUp },
   { to: "/cpi", label: "CPI Forecasting", icon: LineChart, tag: "NEW" },
+  { to: "/report", label: "Executive Report", icon: FileText, tag: "PDF" },
   { to: "/settings", label: "System & Docs", icon: Settings },
 ];
 

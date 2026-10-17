@@ -3,6 +3,7 @@ import { useDataset } from "../context/DatasetContext";
 import { extractErrorMessage, getAnomalies, getForecast } from "../api/client";
 import type { AnomalyResponse, ForecastResponse } from "../types/dataset";
 import { LoadingSpinner } from "../components/LoadingState";
+import AIForecastExplainer from "../components/AIForecastExplainer";
 import {
   TrendingUp,
   AlertOctagon,
@@ -572,6 +573,15 @@ export default function AdvancedAnalytics() {
                   </ResponsiveContainer>
                 </div>
               </div>
+
+              {/* AI Forecast Explainer & Business Intelligence Narrative */}
+              {forecastData.ai_explanation && (
+                <AIForecastExplainer
+                  explanation={forecastData.ai_explanation}
+                  onRefresh={runForecasting}
+                  title={`AI Forecast Explainer: ${forecastTarget} Trajectory`}
+                />
+              )}
             </div>
           ) : null}
         </div>

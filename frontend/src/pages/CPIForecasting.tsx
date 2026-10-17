@@ -11,6 +11,7 @@ import type {
   CpiForecastResponse,
   CpiPoint,
 } from "../types/dataset";
+import AIForecastExplainer from "../components/AIForecastExplainer";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -601,6 +602,16 @@ export default function CPIForecasting() {
             </ResponsiveContainer>
           </div>
         </div>
+      )}
+
+      {/* AI Macroeconomic Analysis & Forecast Explainer */}
+      {forecast && forecast.ai_explanation && (
+        <AIForecastExplainer
+          explanation={forecast.ai_explanation}
+          onRefresh={handleApplyForecast}
+          title={`AI Macroeconomic Analysis: ${forecast.mode_label}`}
+          isCpi
+        />
       )}
 
       {/* Consumer Purchasing Insights & Market Strategy */}

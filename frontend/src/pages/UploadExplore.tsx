@@ -1,32 +1,24 @@
 import React, { useState } from "react";
 import {
-  cleanDataset,
   extractErrorMessage,
   previewDataset,
   uploadDataset,
 } from "../api/client";
 import { useDataset } from "../context/DatasetContext";
-import type { CleaningOptions, DatasetPreview } from "../types/dataset";
+import type { DatasetPreview } from "../types/dataset";
 import QualityScore from "../components/QualityScore";
 import ColumnProfileTable from "../components/ColumnProfileTable";
 import DataPreview from "../components/DataPreview";
+import AIDataCleaningStudio from "../components/AIDataCleaningStudio";
 import { LoadingSpinner } from "../components/LoadingState";
 import {
   UploadCloud,
   FileSpreadsheet,
   Wand2,
   Trash2,
-  CheckCircle2,
   FileText,
   Table as TableIcon,
 } from "lucide-react";
-
-const DEFAULT_CLEANING: CleaningOptions = {
-  drop_duplicate_rows: true,
-  fill_missing_numeric: "median",
-  fill_missing_categorical: "mode",
-  trim_whitespace: true,
-};
 
 export default function UploadExplore() {
   const {
@@ -41,9 +33,7 @@ export default function UploadExplore() {
   } = useDataset();
 
   const [preview, setPreview] = useState<DatasetPreview | null>(null);
-  const [cleaningOptions, setCleaningOptions] = useState<CleaningOptions>(DEFAULT_CLEANING);
   const [isUploading, setIsUploading] = useState(false);
-  const [isCleaning, setIsCleaning] = useState(false);
   const [activeTab, setActiveTab] = useState<"profile" | "preview" | "clean">("profile");
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -69,24 +59,6 @@ export default function UploadExplore() {
       setLocalError(extractErrorMessage(e));
     } finally {
       setIsUploading(false);
-    }
-  }
-
-  async function handleClean() {
-    if (!activeDataset) return;
-    setLocalError(null);
-    setIsCleaning(true);
-    try {
-      const detail = await cleanDataset(activeDataset.id, cleaningOptions);
-      setActiveDatasetDetail(detail);
-      const updatedPrev = await previewDataset(detail.id);
-      setPreview(updatedPrev);
-      await refreshDatasets();
-      setActiveTab("profile");
-    } catch (e) {
-      setLocalError(extractErrorMessage(e));
-    } finally {
-      setIsCleaning(false);
     }
   }
 
@@ -256,7 +228,7 @@ export default function UploadExplore() {
                   }`}
                 >
                   <Wand2 className="h-4 w-4" />
-                  <span>Data Cleaning Studio</span>
+                  <span>AI Data Cleaning Studio</span>
                 </button>
               </div>
 
@@ -275,100 +247,19 @@ export default function UploadExplore() {
                 )}
 
                 {activeTab === "clean" && (
-                  <div className="space-y-5">
-                    <div className="border-b border-slate-100 pb-4">
-                      <h3 className="text-sm font-bold text-slate-800">
-                        Automated Data Cleaning Pipeline
-                      </h3>
-                      <p className="text-xs text-slate-500 mt-1">
-                        Configure deterministic transforms to handle missing values, drop duplicates, and improve data quality score.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-700">
-                      <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 bg-slate-50/50 cursor-pointer hover:bg-slate-50">
-                        <input
-                          type="checkbox"
-                          className="mt-0.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                          checked={cleaningOptions.drop_duplicate_rows}
-                          onChange={(e) =>
-                            setCleaningOptions((o) => ({ ...o, drop_duplicate_rows: e.target.checked }))
-                          }
-                        />
-                        <div>
-                          <strong className="block text-slate-800">Drop Duplicate Records</strong>
-                          <span className="text-slate-500">Remove identical duplicate rows across all dimensions.</span>
-                        </div>
-                      </label>
-
-                      <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 bg-slate-50/50 cursor-pointer hover:bg-slate-50">
-                        <input
-                          type="checkbox"
-                          className="mt-0.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                          checked={cleaningOptions.trim_whitespace}
-                          onChange={(e) =>
-                            setCleaningOptions((o) => ({ ...o, trim_whitespace: e.target.checked }))
-                          }
-                        />
-                        <div>
-                          <strong className="block text-slate-800">Trim Text Whitespace</strong>
-                          <span className="text-slate-500">Strip leading and trailing spaces and empty string tokens.</span>
-                        </div>
-                      </label>
-
-                      <div className="rounded-lg border border-slate-200 p-3 bg-slate-50/50 space-y-1.5">
-                        <label className="block font-bold text-slate-800">
-                          Impute Missing Numerical Values:
-                        </label>
-                        <select
-                          className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800"
-                          value={cleaningOptions.fill_missing_numeric}
-                          onChange={(e) =>
-                            setCleaningOptions((o) => ({
-                              ...o,
-                              fill_missing_numeric: e.target.value as CleaningOptions["fill_missing_numeric"],
-                            }))
-                          }
-                        >
-                          <option value="median">Median (Robust to outliers)</option>
-                          <option value="mean">Arithmetic Mean</option>
-                          <option value="zero">Zero (0)</option>
-                          <option value="none">Preserve as NULL</option>
-                        </select>
-                      </div>
-
-                      <div className="rounded-lg border border-slate-200 p-3 bg-slate-50/50 space-y-1.5">
-                        <label className="block font-bold text-slate-800">
-                          Impute Missing Categorical Values:
-                        </label>
-                        <select
-                          className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800"
-                          value={cleaningOptions.fill_missing_categorical}
-                          onChange={(e) =>
-                            setCleaningOptions((o) => ({
-                              ...o,
-                              fill_missing_categorical: e.target.value as CleaningOptions["fill_missing_categorical"],
-                            }))
-                          }
-                        >
-                          <option value="mode">Most Frequent Category (Mode)</option>
-                          <option value="unknown">Explicit "Unknown" Category</option>
-                          <option value="none">Preserve as NULL</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3 pt-2">
-                      <button
-                        onClick={handleClean}
-                        disabled={isCleaning}
-                        className="flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-brand-700 disabled:opacity-50 transition"
-                      >
-                        <Wand2 className="h-3.5 w-3.5" />
-                        <span>{isCleaning ? "Applying Transforms..." : "Execute Cleaning Pipeline"}</span>
-                      </button>
-                    </div>
-                  </div>
+                  <AIDataCleaningStudio
+                    dataset={activeDataset}
+                    onDatasetUpdated={async (updated) => {
+                      setActiveDatasetDetail(updated);
+                      await refreshDatasets();
+                      try {
+                        const updatedPrev = await previewDataset(updated.id);
+                        setPreview(updatedPrev);
+                      } catch (e) {
+                        console.error("Failed to refresh preview", e);
+                      }
+                    }}
+                  />
                 )}
               </div>
             </>

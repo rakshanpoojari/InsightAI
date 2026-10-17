@@ -8,6 +8,7 @@ import pandas as pd
 from sqlalchemy.engine import Engine
 
 from app.models.dataset import Dataset, DatasetColumn
+from app.services import gemini_service
 from app.services.storage import read_dataframe
 
 logger = logging.getLogger("insightai.cpi")
@@ -481,7 +482,7 @@ def run_cpi_forecast(
             "Maintain standard procurement cycles aligned with operational inventory demand."
         )
 
-    return {
+    res_dict = {
         "dataset_id": dataset.id,
         "dataset_name": dataset.name,
         "mode": mode,
@@ -518,6 +519,32 @@ def run_cpi_forecast(
         ),
         "points": points,
     }
+
+    try:
+        cpi_metrics = {
+            "dataset_name": dataset.name,
+            "mode_label": mode_label,
+            "selected_dimension": active_dim_col or "All",
+            "selected_dimension_value": dimension_value or "All",
+            "horizon_months": horizon,
+            "current_index": current_index,
+            "projected_change_pct": expected_change_pct,
+            "annualized_rate_pct": annualized_rate,
+            "volatility_pct": volatility_pct,
+            "historical_observations": n,
+            "model_name": model_name,
+            "fit_rmse": fit_rmse,
+            "fit_mape": fit_mape,
+            "highest_growth_category": highest_growth_dim,
+            "lowest_growth_category": lowest_growth_dim,
+            "purchasing_recommendation": buying_recommendation,
+        }
+        res_dict["ai_explanation"] = gemini_service.explain_forecast(cpi_metrics, is_cpi=True)
+    except Exception as e:
+        logger.warning(f"Failed to generate CPI AI explanation: {e}")
+        res_dict["ai_explanation"] = None
+
+    return res_dict
 
 
 def get_historical_series(

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import engine, get_db
 from app.models.dataset import Dataset, DatasetColumn
 from app.schemas import AskQuestionRequest, QueryResult, RawQueryRequest
-from app.services import nl_query, sql_engine, suggestions_engine
+from app.services import gemini_service, nl_query, sql_engine, suggestions_engine
 
 logger = logging.getLogger("insightai.analytics")
 router = APIRouter(prefix="/api/datasets/{dataset_id}", tags=["analytics"])
@@ -44,6 +44,25 @@ def ask_question(dataset_id: int, request: AskQuestionRequest, db: Session = Dep
         sql, summary = nl_query.translate_question_to_sql(request.question, dataset, columns)
         result = sql_engine.execute_query(engine, dataset.storage_table_name, sql)
         result.summary = summary
+
+        # Enrich with Gemini AI explanation if configured
+        if gemini_service.is_gemini_configured():
+            ai_data = gemini_service.explain_query_results(
+                question=request.question,
+                dataset_name=dataset.name,
+                columns=columns,
+                sql=result.sql,
+                rows=result.rows,
+                total_rows=result.total_rows,
+                execution_time_ms=result.execution_time_ms,
+            )
+            if ai_data:
+                result.ai_explanation = ai_data.get("ai_explanation")
+                result.ai_supporting_figures = ai_data.get("ai_supporting_figures")
+                result.ai_relevant_columns = ai_data.get("ai_relevant_columns")
+                result.ai_insights = ai_data.get("ai_insights")
+                result.ai_provider = ai_data.get("ai_provider")
+
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

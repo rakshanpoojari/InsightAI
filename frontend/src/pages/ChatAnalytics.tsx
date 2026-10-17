@@ -246,6 +246,90 @@ export default function ChatAnalytics() {
         <LoadingSpinner message="Generating SQL & executing analytical query..." />
       ) : result ? (
         <div className="space-y-4">
+          {/* AI Copilot Explanation Card (When Gemini is active) */}
+          {result.ai_explanation && (
+            <div className="rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50/70 via-white to-indigo-50/40 p-5 shadow-xs space-y-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-brand-100/80 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-600 text-white shadow-2xs">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">AI Copilot Analysis</h3>
+                    <p className="text-[11px] text-slate-500">Verified factual explanation derived from query execution</p>
+                  </div>
+                </div>
+
+                {result.ai_provider ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-brand-100/80 px-2.5 py-0.5 text-[11px] font-semibold text-brand-800 border border-brand-200">
+                    <Sparkles className="h-3 w-3 text-brand-600" />
+                    <span>{result.ai_provider}</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 border border-slate-200">
+                    Deterministic Engine
+                  </span>
+                )}
+              </div>
+
+              {/* Narrative Answer */}
+              <div className="text-sm leading-relaxed text-slate-800 font-medium">
+                {result.ai_explanation}
+              </div>
+
+              {/* Verified Supporting Figures */}
+              {result.ai_supporting_figures && result.ai_supporting_figures.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Verified Key Figures
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {result.ai_supporting_figures.map((fig, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200/80"
+                      >
+                        {fig}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Strategic Insights & Hypotheses */}
+              {result.ai_insights && result.ai_insights.length > 0 && (
+                <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                    <Lightbulb className="h-3 w-3 text-amber-500" />
+                    Strategic Hypotheses & Insights
+                  </div>
+                  <ul className="space-y-1">
+                    {result.ai_insights.map((ins, idx) => (
+                      <li key={idx} className="text-xs text-slate-700 flex items-start gap-2">
+                        <span className="text-brand-500 font-bold">•</span>
+                        <span>{ins}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Referenced Columns */}
+              {result.ai_relevant_columns && result.ai_relevant_columns.length > 0 && (
+                <div className="flex items-center gap-2 text-[11px] text-slate-500 pt-1">
+                  <span className="font-medium">Referenced Columns:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {result.ai_relevant_columns.map((col) => (
+                      <span key={col} className="font-mono rounded bg-white px-1.5 py-0.5 text-slate-700 border border-slate-200 text-[10px]">
+                        {col}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* SQL Explanation & Timing Card */}
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">

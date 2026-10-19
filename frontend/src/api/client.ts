@@ -21,7 +21,13 @@ import type {
   ReportPreviewResponse,
 } from "../types/dataset";
 
-const api = axios.create({ baseURL: "/api" });
+const api = axios.create({
+  // VITE_API_BASE_URL is set in the Vercel frontend project's environment variables
+  // to the backend origin, e.g. https://insightai-backend-six.vercel.app
+  // All FastAPI routes are registered under /api/... so we append that here.
+  // When not set (local dev), Vite's proxy forwards /api/* to localhost:8000.
+  baseURL: `${(import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ""}/api`,
+});
 
 export async function uploadDataset(file: File): Promise<DatasetDetail> {
   const form = new FormData();
@@ -83,7 +89,8 @@ export async function resetClean(id: number): Promise<DatasetDetail> {
 }
 
 export function getExportUrl(id: number, format: "csv" | "xlsx"): string {
-  return `/api/datasets/${id}/export?format=${format}`;
+  const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
+  return `${base}/api/datasets/${id}/export?format=${format}`;
 }
 
 export async function deleteDataset(id: number): Promise<void> {
